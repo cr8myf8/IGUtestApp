@@ -1,0 +1,11 @@
+{
+  "name": "TestApp",
+  "version": "1.0.0",
+  "description": "IGU Test App",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Scott Owen",
+  "license": "ISC"
+}
