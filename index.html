@@ -1,0 +1,236 @@
+<html>
+<head>
+    <title>Kinestral Characterization App</title>
+    <!--Load the AJAX API-->
+	<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js">  </script>
+	<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+	<script type="text/javascript" src="/socket.io/socket.io.js"></script> 
+    <script type="text/javascript">
+	var option = 0;
+	brdInfoNum = 0;
+    var socket = io.connect('http://localhost:4400');
+    socket.on('connected', function(data) {    
+      //alert("connected2");
+      }); 
+    // when you get a receiveSerial event, do this 
+    socket.on('serialData', function (data) {          
+      //alert(data.serialData);
+		$("textarea#serialDisplay").val($("textarea#serialDisplay").val()+"\n"+data.serialData);
+    });
+	socket.on('dataCount', function (data) {          
+      //alert(data.serialData);
+	  if (data.count > 20) socket.emit("dataCollectDone",{chan:option} );
+	  //$("textarea#brdNum").val($("textarea#brdNum").val()+"\n"+data.count);
+    });
+	socket.on('collectData', function (data) {          
+      //alert(data.serialData);
+	var curData = data.serialData.split(",")
+	var myTable = document.getElementById('myTable');	
+	var tds = myTable.getElementsByTagName("td");
+	for (var i = 0; i< curData.length; i++){
+		myTable.rows[1].cells[i].innerHTML = curData[i+1];//"<FONT SIZE="+'"'+12+'">'+curData[i+1]+"</FONT>";
+		myTable.rows[1].cells[i].style.fontSize = "28px";
+	}
+	if(Number(myTable.rows[1].cells[0].innerHTML) < -0.5 || Number(myTable.rows[1].cells[0].innerHTML) > 1.6){
+		tds[0].style.color = "#F4FA58";
+	if(Number(myTable.rows[1].cells[0].innerHTML) < -0.6 || Number(myTable.rows[1].cells[0].innerHTML) > 1.7){
+		tds[0].style.color = "#FF0000";
+	}
+	}else tds[0].style.color = "#000000";
+    });
+	socket.on('brdInfo', function (data) {          
+      //alert(data.serialData);
+	    brdInfoNum++;
+		$("textarea#brdNum").val($("textarea#brdNum").val()+"\n"+data.serialData);
+		if (brdInfoNum > 11 ){
+		socket.emit('getInfoDone');
+		}
+    });
+	socket.on('plotInfo', function (data) {          
+      //alert(data.info);
+	  var url = data.info.split(",")	  
+		$("textarea#plotDisplay").val(url[0].slice(8,url[0].length-1)+"\n"+url[3]);
+    });
+	$(document).ready(function(){
+	  $("#OFF").click(function(){
+          //$.post("http://localhost:3000/off",{CH: option}, function(data){});
+		  socket.emit("off", {chan:option});
+      });
+	  $("#send").click(function () {    
+		var element = document.getElementById('serialString');
+		//alert("hello:"+element.value);
+		socket.emit("sendSerial", {cmd:element.value});
+	  });
+	  $("#start_ch").click(function () {    
+		socket.emit("startCh", {chan:option});
+	  });
+	  $("#stop_ch").click(function () {    
+		socket.emit("stopCh", {chan:option});
+	  });
+	  $("#ForceVoltage").click(function () {
+	    var volt = $("#volt").val();
+		var minCur = $("#volt").val();
+		var duration = $("#duration").val();
+		socket.emit("forceVolt", {chan:option,volt:volt,minCur:minCur,duration:duration});
+	  });
+	  $("#ForceCurrent").click(function () {
+	  	var A         = $("#current").val();
+		var lowVolt   = $("#lowVolt").val();
+		var highVolt  = $("#highVolt").val();
+		var stopCur   = $("#stopCur").val();
+		var maxTime   = $("#maxTime").val();
+		socket.emit("forceCurrent", {chan:option,current:A,lowVolt:lowVolt,highVolt:highVolt,stopCur:stopCur,maxTime:maxTime});
+	  }); 
+	  $("#printArray").click(function(){
+			sList = "";
+			plotName = $("#plotName").val();
+			$('input[name=dataType]').each(function () {
+				var sThisVal = (this.checked ? "1" : "0");
+				sList += (sList=="" ? sThisVal : "," + sThisVal);
+			});
+			var printList = JSON.stringify(sList);
+			//window.alert(sList);
+			socket.emit("printArr",{plotName: plotName,printList:printList}, function(data){});
+      });
+	  $("#setGains").click(function(){
+		var NVDL	= $("#NVDL").val();
+		var PVDL   	= $("#PVDL").val();
+		var PIDL  	= $("#PIDL").val();
+		var NIDL   	= $("#NIDL").val();
+		var KP  	= $("#KP").val();
+		var KI  	= $("#KI").val();
+		var KD  	= $("#KD").val();
+		socket.emit("setGains", {chan:option,NVDL:NVDL,PVDL:PVDL,PIDL:PIDL,NIDL:NIDL,KP:KP,KI:KI,KD:KD});
+      });
+	  $("#autoCal").click(function () {    
+		socket.emit("autoCal", {chan:option});
+	  });
+	  $("#getInfo").click(function () {    
+	    brdInfoNum = 0;
+		socket.emit("getInfo", {chan:option});
+	  });	  
+	  $("#clear").click(function () {    
+		socket.emit("clearData", {chan:option});
+	  });
+	  $("input:radio[name=CH]").click(function() {
+			option = $(this).val();
+	  });
+	});
+	
+  </script>
+<style type="text/css">
+textarea.terms {
+	width:750px;
+	height:200px;
+	border:1px solid #ccc;
+	background:#f2f2f2;
+	font:normal 11px/15px arial;
+	padding:6px;
+	color:#333;
+}
+textarea.terms2 {
+	width:600px;
+	height:50px;
+	border:1px solid #ccc;
+	background:#f2f2f2;
+	font:normal 11px/15px arial;
+	padding:6px;
+	color:#333;
+}
+textarea.terms3 {
+	width:600px;
+	height:100px;
+	border:1px solid #ccc;
+	background:#f2f2f2;
+	font:normal 11px/15px arial;
+	padding:6px;
+	color:#333;
+}
+</style>
+
+</head>
+
+<body>
+<h1>Kinestral Characterization Interface2</h1>
+<table id="myTable" border="1" >
+  <tr>
+	<th>Vsense</th> 	<th>Vpanel</th>	<th>Ipanel</th>		<th>Vseq</th>
+	<th>Iseq</th>   	<th>Temp</th>	<th>Coulombs</th>	<th>errV</th>
+	<th>errA</th>		<th>errAcc</th>	<th>errD</th>		<th>Vcmd</th>
+	<th>%Overshoot</th>	<th>Kp</th>		<th>Ki</th>			<th>Kd</th>
+	<th>Current In</th>	<th>Power In</th><th>Power Out</th>
+  </tr>
+  <tr>
+    <td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td>
+	<td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td>
+	<td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td>
+	<td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td>
+	<td>0.0</td><td>0.0</td><td>0.0</td>
+  </tr>
+</table><br>
+<label for="male" style="height:50px; width:50px" >TURN OFF</label>
+<input type="button" id="OFF" value="OCV" style="height:50px; width:500px"><br>
+<h2> SERIAL STRING SEND</h2>
+<input id="send" type="submit" value="Send" />
+<input id="serialString" value="*GI 0" />
+<input type="radio" id="CH1" name="CH" value="0" checked="checked">CH0
+<input type="radio" id="CH1" name="CH" value="1">CH1
+<input type="radio" id="CH2" name="CH" value="2">CH2
+<input type="radio" id="CH3" name="CH" value="3">CH3
+<input type="radio" id="CH4" name="CH" value="4">CH4
+<input type="radio" id="CH5" name="CH" value="5">CH5<br>
+<input type="button" id="start_ch" value="start_ch_record">
+<input type="button" id="stop_ch" value="stop_ch_record"><br>
+<h2> SERIAL STRING RECEIVED:</h2>
+<textarea class="terms" readonly="readonly" id="serialDisplay" >console </textarea><br><br>
+<input type="button" id="ForceVoltage" value="ForceVoltage">
+	<label for="male">Voltage (mV)</label> <input type="TEXT" id="volt" size="10" value="1000">
+	<label for="male">Min Current (mA)</label> <input type="TEXT" id="minCur" size="10" value="0">
+	<label for="male">time (# of 10 ms periods)</label> <input type="TEXT" id="duration" size="10" value="5000"><br><br><br>
+	<input type="button" id="ForceCurrent" value="ForceCurrent/Voltage">
+	<label for="male">Current (mA)</label> <input type="TEXT" id="current" size="5" value="1000">
+	<label for="male">low Volt (mA)</label> <input type="TEXT" id="lowVolt" size="5" value="1200">
+	<label for="male">high Volt (mV)</label> <input type="TEXT" id="highVolt" size="5"value="1500">
+	<label for="male">stop current (mA)</label> <input type="TEXT" id="stopCur" size="5" value="25">
+	<label for="male">max time(sec*100)</label> <input type="TEXT" id="maxTime" size="5" value="100000"><br><br>
+	<!--<label for="male">Charge Limit(mC)</label> <input type="TEXT" id="charLim" size="5" value="Not Needed"><br><br>
+	<!-- <input type="button" id="printChart" value="printChart"><br> -->
+	<!-- <input type="button" id="openChart" value="openChart" onclick="chartOpen"><br> -->
+	<input type="button" id="printArray" value="create plot">
+	<label for="male">plotName</label> <input type="TEXT" id="plotName" size="40" value="IGUchar"><br>
+	<textarea class="terms2" readonly="readonly" id="plotDisplay" >console </textarea><br>
+	<label for="male">Clear Data Array</label><input type="button" id="clear" value="clear"><br><br>
+	<input type="checkbox" name="dataType" value="Vsense" checked="checked"> Vsense
+	<input type="checkbox" name="dataType" value="Vpanel" checked="checked"> Vpanel
+	<input type="checkbox" name="dataType" value="Ipanel" checked="checked"> Ipanel
+	<input type="checkbox" name="dataType" value="Vseq"> Vseq
+	<input type="checkbox" name="dataType" value="Iseq"> Iseq
+	<input type="checkbox" name="dataType" value="Temp"> Temp
+	<input type="checkbox" name="dataType" value="Coulombs"> Coulombs
+	<input type="checkbox" name="dataType" value="ErrV"> ErrV
+	<input type="checkbox" name="dataType" value="errA"> errA
+	<input type="checkbox" name="dataType" value="errAcc"> errAcc
+	<input type="checkbox" name="dataType" value="errD"> errD<br>
+	<input type="checkbox" name="dataType" value="Vcmd"> Vcmd
+	<input type="checkbox" name="dataType" value="Overshoot"> %Overshoot
+	<input type="checkbox" name="dataType" value="Kp"> Kp
+	<input type="checkbox" name="dataType" value="Ki"> Ki
+	<input type="checkbox" name="dataType" value="Kd"> Kd
+	<input type="checkbox" name="dataType" value="InputCurrent"> input current
+	<input type="checkbox" name="dataType" value="powerIn"> Power In
+	<input type="checkbox" name="dataType" value="powerOut"> Power Out<br><br>
+	<input type="button" id="getInfo" value="getInfo"> 
+	<input type="button" id="setGains" value="SetGains">
+	<label for="male">NVDL</label> <input type="TEXT" id="NVDL" size="3" value="-13000">
+	<label for="male">PVDL</label> <input type="TEXT" id="PVDL" size="3" value="13000">
+	<label for="male">PIDL</label> <input type="TEXT" id="PIDL" size="3"value="1100">
+	<label for="male">NIDL</label> <input type="TEXT" id="NIDL" size="3"value="-1100">
+	<label for="male">KP</label> <input type="TEXT" id="KP" size="3" value="100">
+	<label for="male">KI</label> <input type="TEXT" id="KI" size="3" value="10">
+	<label for="male">KD</label> <input type="TEXT" id="KD" size="3" value="1000"><br>
+	<input type="button" id="autoCal" value="autoCal"><br>
+	<textarea class="terms3" readonly="readonly" id="brdNum" >Board Info </textarea><br><br>
+	<div id="chart_div" style="width: 900px; height: 500px;"></div>
+
+
+</html>
